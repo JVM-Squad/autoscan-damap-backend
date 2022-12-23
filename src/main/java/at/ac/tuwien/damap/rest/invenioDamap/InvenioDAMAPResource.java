@@ -148,7 +148,7 @@ public class InvenioDAMAPResource {
             distributions.forEach(d -> {
                 var dataAccess = EDataAccessType.OPEN;
                 if (d.getDataAccess() != null) {
-                    dataAccess = EDataAccessType.getByValue(d.getDataAccess().name());
+                    dataAccess = EDataAccessType.getByValue(d.getDataAccess().value());
                 }
                 datasetDO.setDataAccess(dataAccess);
                 licenseBuilder.append(d.getLicense().stream()
@@ -159,14 +159,40 @@ public class InvenioDAMAPResource {
         }
 
         datasetDO.setOtherProjectMembersAccess(EAccessRight.READ);
-        datasetDO.setPersonalData(false);
+
+        Boolean personalData = true;
+        switch (madmpDataset.getPersonalData()) {
+            case NO:
+                personalData = false;
+                break;
+            case UNKNOWN:
+            case YES:
+            default:
+                personalData = true;
+                break;
+        }
+        datasetDO.setPersonalData(personalData);
+
         datasetDO.setPublicAccess(EAccessRight.READ);
         datasetDO.setReasonForDeletion("");
         // TODO: should we set this? If so, what to ?
         datasetDO.setReferenceHash(null);
         datasetDO.setRetentionPeriod(null);
         datasetDO.setSelectedProjectMembersAccess(EAccessRight.READ);
-        datasetDO.setSensitiveData(false);
+
+        Boolean sensitiveData = true;
+        switch (madmpDataset.getSensitiveData()) {
+            case NO:
+                sensitiveData = false;
+                break;
+            case UNKNOWN:
+            case YES:
+            default:
+                sensitiveData = true;
+                break;
+        }
+        datasetDO.setSensitiveData(sensitiveData);
+
         // TODO: Let user decide?
         datasetDO.setSource(EDataSource.NEW);
         // This should match the dataset. If new, setDataKind. else setReusedDataKind
@@ -178,7 +204,6 @@ public class InvenioDAMAPResource {
         var types = new ArrayList<EDataType>();
         var type = EDataType.OTHER;
         try {
-            log.info("dataset type: " + madmpDataset.getType());
             type = EDataType.getByValue(madmpDataset.getType());
         } catch (Exception e) {
 
