@@ -172,6 +172,7 @@ public class InvenioDAMAPResource {
                 break;
         }
         datasetDO.setPersonalData(personalData);
+        dmpDO.setPersonalData(dmpDO.getPersonalData() || personalData);
 
         datasetDO.setPublicAccess(EAccessRight.READ);
         datasetDO.setReasonForDeletion("");
@@ -192,6 +193,7 @@ public class InvenioDAMAPResource {
                 break;
         }
         datasetDO.setSensitiveData(sensitiveData);
+        dmpDO.setSensitiveData(dmpDO.getSensitiveData() || sensitiveData);
 
         // TODO: Let user decide?
         datasetDO.setSource(EDataSource.NEW);
