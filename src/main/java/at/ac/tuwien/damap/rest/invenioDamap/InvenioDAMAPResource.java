@@ -1,6 +1,8 @@
 package at.ac.tuwien.damap.rest.invenioDamap;
 
+import java.text.MessageFormat;
 import java.util.ArrayList;
+import java.util.Date;
 import java.util.List;
 import java.util.stream.Collectors;
 
@@ -14,6 +16,7 @@ import javax.ws.rs.core.Context;
 import javax.ws.rs.core.HttpHeaders;
 import javax.ws.rs.core.MediaType;
 
+import org.apache.james.mime4j.dom.datetime.DateTime;
 import org.eclipse.microprofile.config.inject.ConfigProperty;
 import org.jboss.resteasy.annotations.jaxrs.PathParam;
 
@@ -32,6 +35,8 @@ import at.ac.tuwien.damap.rest.dmp.mapper.MapperService;
 import at.ac.tuwien.damap.rest.dmp.service.DmpService;
 import at.ac.tuwien.damap.rest.madmp.dto.Dataset;
 import at.ac.tuwien.damap.rest.madmp.service.MaDmpService;
+import at.ac.tuwien.damap.rest.version.VersionDO;
+import at.ac.tuwien.damap.rest.version.VersionService;
 import at.ac.tuwien.damap.security.SecurityService;
 import at.ac.tuwien.damap.validation.AccessValidator;
 import io.quarkus.security.ForbiddenException;
@@ -58,6 +63,9 @@ public class InvenioDAMAPResource {
     @Inject
     MaDmpService madmpService;
 
+    @Inject
+    VersionService versionService;
+
     @ConfigProperty(name = "invenio.shared-secret")
     String sharedSecret;
 
@@ -80,9 +88,9 @@ public class InvenioDAMAPResource {
 
         // This could allow us to authenticate users with OIDC, and allow admins to
         // access all DMPs.
-        // Since this will always evaluate to false as of right now, it will check the
-        // auth header
         if (!(securityService.isAdmin() || securityService.getUserId() == personId)) {
+            // Since this will always evaluate to false as of right now, it will check the
+            // auth header
             if (!validateAuthHeader(headers)) {
                 throw new UnauthorizedException();
             }
@@ -117,10 +125,19 @@ public class InvenioDAMAPResource {
         var datasetDO = mapMaDMPDatasetToDatasetDO(dmpDO, new DatasetDO(), dataset, null);
 
         dmpDO.getDatasets().add(datasetDO);
-        return dmpService.update(dmpDO);
+        dmpDO = dmpService.update(dmpDO);
+
+        VersionDO version = new VersionDO();
+        version.setDmpId(id);        
+        version.setVersionName(MessageFormat.format("Added dataset `{0}` from remote datasource", dataset.getTitle()));
+        version.setVersionDate(new Date());
+        versionService.create(version);
+
+        return dmpDO;
     }
 
-    public DatasetDO mapMaDMPDatasetToDatasetDO(DmpDO dmpDO,
+    // TODO: move to mapper
+    private DatasetDO mapMaDMPDatasetToDatasetDO(DmpDO dmpDO,
             DatasetDO datasetDO,
             Dataset madmpDataset, MapperService mapperService) {
 
