@@ -156,7 +156,7 @@ public class InvenioDAMAPResource {
         datasetDO.setDeletionPerson(null);
         datasetDO.setDescription(madmpDataset.getDescription());
         datasetDO.setLegalRestrictions(null);
-        datasetDO.setLicense("");
+        datasetDO.setLicense(null);
         datasetDO.setSize(0L);
         // General TODO: some attributes have to be set from distribution
         if (madmpDataset.getDistribution() != null) {
@@ -172,7 +172,7 @@ public class InvenioDAMAPResource {
                         .map(l -> l.getLicenseRef().toString()).collect(Collectors.joining(", ")));
                 datasetDO.setSize(datasetDO.getSize() + d.getByteSize());
             });
-            datasetDO.setLicense(licenseBuilder.toString());
+            // datasetDO.setLicense(licenseBuilder.toString());
         }
 
         datasetDO.setOtherProjectMembersAccess(EAccessRight.READ);
