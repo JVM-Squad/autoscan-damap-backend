@@ -2,6 +2,7 @@ package at.ac.tuwien.damap.rest.invenioDamap;
 
 import java.text.MessageFormat;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.Date;
 import java.util.List;
 import java.util.stream.Collectors;
@@ -27,6 +28,7 @@ import at.ac.tuwien.damap.enums.EDataKind;
 import at.ac.tuwien.damap.enums.EDataSource;
 import at.ac.tuwien.damap.enums.EDataType;
 import at.ac.tuwien.damap.enums.EIdentifierType;
+import at.ac.tuwien.damap.enums.ELicense;
 import at.ac.tuwien.damap.repo.AccessRepo;
 import at.ac.tuwien.damap.rest.dmp.domain.DatasetDO;
 import at.ac.tuwien.damap.rest.dmp.domain.DmpDO;
@@ -172,7 +174,12 @@ public class InvenioDAMAPResource {
                         .map(l -> l.getLicenseRef().toString()).collect(Collectors.joining(", ")));
                 datasetDO.setSize(datasetDO.getSize() + d.getByteSize());
             });
-            // datasetDO.setLicense(licenseBuilder.toString());
+            // TODO: Support multiple licenses 
+            ELicense license = Arrays.stream(ELicense.values())
+                .filter(eLicense -> eLicense.getUrl().equals(licenseBuilder.toString()))
+                .findFirst()
+                .orElse(null);
+            datasetDO.setLicense(license);
         }
 
         datasetDO.setOtherProjectMembersAccess(EAccessRight.READ);
