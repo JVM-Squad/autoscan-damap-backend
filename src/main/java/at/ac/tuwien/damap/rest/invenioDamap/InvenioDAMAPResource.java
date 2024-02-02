@@ -17,7 +17,6 @@ import javax.ws.rs.core.Context;
 import javax.ws.rs.core.HttpHeaders;
 import javax.ws.rs.core.MediaType;
 
-import org.apache.james.mime4j.dom.datetime.DateTime;
 import org.eclipse.microprofile.config.inject.ConfigProperty;
 import org.jboss.resteasy.annotations.jaxrs.PathParam;
 
@@ -32,10 +31,12 @@ import at.ac.tuwien.damap.enums.ELicense;
 import at.ac.tuwien.damap.repo.AccessRepo;
 import at.ac.tuwien.damap.rest.dmp.domain.DatasetDO;
 import at.ac.tuwien.damap.rest.dmp.domain.DmpDO;
+import at.ac.tuwien.damap.rest.dmp.domain.ExternalStorageDO;
 import at.ac.tuwien.damap.rest.dmp.domain.IdentifierDO;
 import at.ac.tuwien.damap.rest.dmp.mapper.MapperService;
 import at.ac.tuwien.damap.rest.dmp.service.DmpService;
 import at.ac.tuwien.damap.rest.madmp.dto.Dataset;
+import at.ac.tuwien.damap.rest.madmp.dto.Host;
 import at.ac.tuwien.damap.rest.madmp.service.MaDmpService;
 import at.ac.tuwien.damap.rest.version.VersionDO;
 import at.ac.tuwien.damap.rest.version.VersionService;
@@ -130,7 +131,7 @@ public class InvenioDAMAPResource {
         dmpDO = dmpService.update(dmpDO);
 
         VersionDO version = new VersionDO();
-        version.setDmpId(id);        
+        version.setDmpId(id);
         version.setVersionName(MessageFormat.format("Added dataset `{0}` from remote datasource", dataset.getTitle()));
         version.setVersionDate(new Date());
         versionService.create(version);
@@ -173,12 +174,37 @@ public class InvenioDAMAPResource {
                 licenseBuilder.append(d.getLicense().stream()
                         .map(l -> l.getLicenseRef().toString()).collect(Collectors.joining(", ")));
                 datasetDO.setSize(datasetDO.getSize() + d.getByteSize());
+
+                if (d.getHost() != null) {
+                    Host host = d.getHost();
+
+                    ExternalStorageDO externalStorageDO = null;
+                    String hostPath = host.getUrl() == null ? null : host.getUrl().getPath();
+
+                    var externalStorages = dmpDO.getExternalStorage();
+                    if (hostPath != null) {
+                        externalStorageDO = externalStorages.stream()
+                                .filter(s -> s.getUrl().equals(hostPath)).findFirst()
+                                .orElse(null);
+                    }
+                    if (externalStorageDO == null) {
+                        externalStorageDO = new ExternalStorageDO();
+                        externalStorageDO.setBackupFrequency(host.getBackupFrequency());
+                        externalStorageDO.setStorageLocation(host.getGeoLocation().toString());
+                        externalStorageDO.setTitle(host.getTitle());
+                        externalStorageDO.setUrl(hostPath);
+                        externalStorages.add(externalStorageDO);
+                    }
+
+                    dmpDO.setExternalStorage(externalStorages);
+                }
             });
-            // TODO: Support multiple licenses 
+
+            // TODO: Support multiple licenses
             ELicense license = Arrays.stream(ELicense.values())
-                .filter(eLicense -> eLicense.getUrl().equals(licenseBuilder.toString()))
-                .findFirst()
-                .orElse(null);
+                    .filter(eLicense -> eLicense.getUrl().equals(licenseBuilder.toString()))
+                    .findFirst()
+                    .orElse(null);
             datasetDO.setLicense(license);
         }
 
