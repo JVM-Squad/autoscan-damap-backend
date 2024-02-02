@@ -17,6 +17,7 @@ import javax.ws.rs.core.Context;
 import javax.ws.rs.core.HttpHeaders;
 import javax.ws.rs.core.MediaType;
 
+import org.apache.commons.lang3.RandomStringUtils;
 import org.eclipse.microprofile.config.inject.ConfigProperty;
 import org.jboss.resteasy.annotations.jaxrs.PathParam;
 
@@ -154,6 +155,8 @@ public class InvenioDAMAPResource {
             datasetDO.setDatasetId(newId);
         }
 
+        // TODO: should we set this? If so, what to ?
+        datasetDO.setReferenceHash(RandomStringUtils.randomAlphanumeric(64));
         datasetDO.setDateOfDeletion(null);
         datasetDO.setDelete(false);
         datasetDO.setDeletionPerson(null);
@@ -184,17 +187,22 @@ public class InvenioDAMAPResource {
                     var externalStorages = dmpDO.getExternalStorage();
                     if (hostPath != null) {
                         externalStorageDO = externalStorages.stream()
-                                .filter(s -> s.getUrl().equals(hostPath)).findFirst()
+                                .filter(s -> hostPath.equals(s.getUrl())).findFirst()
                                 .orElse(null);
                     }
                     if (externalStorageDO == null) {
                         externalStorageDO = new ExternalStorageDO();
                         externalStorageDO.setBackupFrequency(host.getBackupFrequency());
-                        externalStorageDO.setStorageLocation(host.getGeoLocation().toString());
+                        externalStorageDO.setStorageLocation(
+                                host.getGeoLocation() != null ? host.getGeoLocation().toString() : null);
                         externalStorageDO.setTitle(host.getTitle());
                         externalStorageDO.setUrl(hostPath);
                         externalStorages.add(externalStorageDO);
                     }
+
+                    var datasetHashes = externalStorageDO.getDatasets();
+                    datasetHashes.add(datasetDO.getReferenceHash());
+                    externalStorageDO.setDatasets(datasetHashes);
 
                     dmpDO.setExternalStorage(externalStorages);
                 }
@@ -226,8 +234,7 @@ public class InvenioDAMAPResource {
 
         datasetDO.setPublicAccess(EAccessRight.READ);
         datasetDO.setReasonForDeletion("");
-        // TODO: should we set this? If so, what to ?
-        datasetDO.setReferenceHash(null);
+
         datasetDO.setRetentionPeriod(null);
         datasetDO.setSelectedProjectMembersAccess(EAccessRight.READ);
 
