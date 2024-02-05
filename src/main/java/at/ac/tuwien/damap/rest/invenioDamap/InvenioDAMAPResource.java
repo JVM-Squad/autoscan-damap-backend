@@ -126,7 +126,21 @@ public class InvenioDAMAPResource {
         }
 
         DmpDO dmpDO = dmpService.getDmpById(id);
-        var datasetDO = mapMaDMPDatasetToDatasetDO(dmpDO, new DatasetDO(), dataset, null);
+        var datasetDO = dmpDO.getDatasets().stream().filter(ds -> {
+            var localIdentifier = ds.getDatasetId();
+            var externalIdentifier = dataset.getDatasetId();
+
+            if (localIdentifier == null || externalIdentifier == null) {
+                return false;
+            }
+
+            return localIdentifier.getIdentifier() != null && externalIdentifier.getIdentifier() != null
+                    && localIdentifier.getType() != null && externalIdentifier.getType() != null
+                    && localIdentifier.getIdentifier().equals(externalIdentifier.getIdentifier())
+                    && localIdentifier.getType().toString().equalsIgnoreCase(externalIdentifier.getType().name());
+        }).findFirst().orElse(new DatasetDO());
+
+        datasetDO = mapMaDMPDatasetToDatasetDO(dmpDO, datasetDO, dataset, null);
 
         dmpDO.getDatasets().add(datasetDO);
         dmpDO = dmpService.update(dmpDO);
