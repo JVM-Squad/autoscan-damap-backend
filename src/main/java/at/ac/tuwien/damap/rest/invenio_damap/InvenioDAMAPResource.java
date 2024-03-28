@@ -1,8 +1,7 @@
-package at.ac.tuwien.damap.rest.invenioDamap;
+package at.ac.tuwien.damap.rest.invenio_damap;
 
-import java.text.MessageFormat;
-import java.util.*;
-import java.util.stream.Collectors;
+import java.util.List;
+import java.util.Objects;
 
 import javax.inject.Inject;
 import javax.ws.rs.Consumes;
@@ -19,12 +18,9 @@ import org.jboss.resteasy.annotations.jaxrs.PathParam;
 
 import at.ac.tuwien.damap.domain.Access;
 import at.ac.tuwien.damap.repo.AccessRepo;
-import at.ac.tuwien.damap.rest.dmp.domain.DatasetDO;
 import at.ac.tuwien.damap.rest.dmp.domain.DmpDO;
 import at.ac.tuwien.damap.rest.dmp.service.DmpService;
 import at.ac.tuwien.damap.rest.madmp.dto.Dataset;
-import at.ac.tuwien.damap.rest.version.VersionDO;
-import at.ac.tuwien.damap.rest.version.VersionService;
 import at.ac.tuwien.damap.security.SecurityService;
 import at.ac.tuwien.damap.validation.AccessValidator;
 import io.quarkus.security.ForbiddenException;
@@ -37,19 +33,20 @@ import lombok.extern.jbosslog.JBossLog;
 public class InvenioDAMAPResource {
 
     @Inject
+    public InvenioDAMAPResource(SecurityService securityService, AccessValidator accessValidator, AccessRepo accessRepo,
+            DmpService dmpService, InvenioDAMAPService invenioDAMAPService) {
+        this.securityService = securityService;
+        this.accessValidator = accessValidator;
+        this.accessRepo = accessRepo;
+        this.dmpService = dmpService;
+        this.invenioDAMAPService = invenioDAMAPService;
+    }
+
     SecurityService securityService;
-
-    @Inject
     AccessValidator accessValidator;
-
-    @Inject
     AccessRepo accessRepo;
-
-    @Inject
     DmpService dmpService;
-
-    @Inject
-    VersionService versionService;
+    InvenioDAMAPService invenioDAMAPService;
 
     @ConfigProperty(name = "invenio.shared-secret")
     String sharedSecret;
@@ -72,7 +69,7 @@ public class InvenioDAMAPResource {
             // Since this will always evaluate to false as of right now, it will check the
             // auth header
             if (!validateAuthHeader(headers)) {
-                throw new UnauthorizedException();
+                throw new ForbiddenException();
             }
         }
     }
@@ -80,56 +77,26 @@ public class InvenioDAMAPResource {
     @GET
     @Path("/person/{personId}")
     public List<DmpDO> getDmpListByPerson(@PathParam String personId, @Context HttpHeaders headers) {
-        log.info("Return dmp for person id: " + personId);
+        log.info("Return dmps for person id: " + personId);
 
         checkIfUserIsAuthorized(personId, headers);
-
         List<Access> accessList = accessRepo.getAllDmpByUniversityId(personId);
 
-        return accessList.stream().map(access ->
-            dmpService.getDmpById(access.getDmp().id)
-        ).toList();
+        return accessList.stream().map(access -> dmpService.getDmpById(access.getDmp().id)).toList();
     }
 
     @POST
-    @Path("/{id}/{personId}")
+    @Path("/{dmpId}/{personId}")
     @Consumes(MediaType.APPLICATION_JSON)
-    public DmpDO addDataSetToDMP(@PathParam long id, @PathParam String personId, Dataset dataset,
-                                 @Context HttpHeaders headers) {
-        log.info("Add dataset to dmp with id: " + id);
+    public DmpDO addDataSetToDmp(@PathParam long dmpId, @PathParam String personId, Dataset dataset,
+            @Context HttpHeaders headers) {
+        log.info("Add dataset to dmp with id: " + dmpId);
 
         checkIfUserIsAuthorized(personId, headers);
-
-        if (!accessValidator.canEditDmp(id, personId)) {
-            throw new ForbiddenException("Not authorized to access dmp with id " + id);
+        if (!accessValidator.canEditDmp(dmpId, personId)) {
+            throw new ForbiddenException("Not authorized to access dmp with id " + dmpId);
         }
 
-        DmpDO dmpDO = dmpService.getDmpById(id);
-        var datasetDO = dmpDO.getDatasets().stream().filter(ds -> {
-            var localIdentifier = ds.getDatasetId();
-            var externalIdentifier = dataset.getDatasetId();
-
-            if (localIdentifier == null || externalIdentifier == null) {
-                return false;
-            }
-
-            return localIdentifier.getIdentifier() != null && externalIdentifier.getIdentifier() != null
-                    && localIdentifier.getType() != null && externalIdentifier.getType() != null
-                    && localIdentifier.getIdentifier().equals(externalIdentifier.getIdentifier())
-                    && localIdentifier.getType().toString().equalsIgnoreCase(externalIdentifier.getType().name());
-        }).findFirst().orElse(new DatasetDO());
-
-        datasetDO = InvenioDamapResourceMapper.mapMaDMPDatasetToDatasetDO(dmpDO, datasetDO, dataset);
-
-        dmpDO.getDatasets().add(datasetDO);
-        dmpDO = dmpService.update(dmpDO);
-
-        VersionDO version = new VersionDO();
-        version.setDmpId(id);
-        version.setVersionName(MessageFormat.format("Added dataset `{0}` from remote datasource", dataset.getTitle()));
-        version.setVersionDate(new Date());
-        versionService.create(version);
-
-        return dmpDO;
+        return invenioDAMAPService.addDataSetToDMP(dmpId, dataset);
     }
 }

@@ -1,4 +1,4 @@
-package at.ac.tuwien.damap.rest.invenioDamap;
+package at.ac.tuwien.damap.rest.invenio_damap;
 
 import at.ac.tuwien.damap.enums.*;
 import at.ac.tuwien.damap.rest.dmp.domain.DatasetDO;
@@ -8,10 +8,11 @@ import at.ac.tuwien.damap.rest.dmp.domain.IdentifierDO;
 import at.ac.tuwien.damap.rest.madmp.dto.Dataset;
 import at.ac.tuwien.damap.rest.madmp.dto.Host;
 import lombok.experimental.UtilityClass;
-import org.apache.commons.lang3.RandomStringUtils;
 
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.Date;
+import java.util.Objects;
 import java.util.stream.Collectors;
 
 @UtilityClass
@@ -28,8 +29,7 @@ public class InvenioDamapResourceMapper {
             datasetDO.setDatasetId(newId);
         }
 
-        // TODO: should we set this? If so, what to ?
-        datasetDO.setReferenceHash(RandomStringUtils.randomAlphanumeric(64));
+        datasetDO.setReferenceHash((new Date()).toString());
         datasetDO.setDateOfDeletion(null);
         datasetDO.setDelete(false);
         datasetDO.setDeletionPerson(null);
@@ -37,6 +37,7 @@ public class InvenioDamapResourceMapper {
         datasetDO.setLegalRestrictions(null);
         datasetDO.setLicense(null);
         datasetDO.setSize(0L);
+
         // General TODO: some attributes have to be set from distribution
         if (madmpDataset.getDistribution() != null) {
             var distributions = madmpDataset.getDistribution();
@@ -92,6 +93,7 @@ public class InvenioDamapResourceMapper {
         datasetDO.setOtherProjectMembersAccess(EAccessRight.READ);
 
         Boolean personalData = true;
+        madmpDataset.setPersonalData(Objects.requireNonNullElse(madmpDataset.getPersonalData(), Dataset.PersonalData.UNKNOWN));
         switch (madmpDataset.getPersonalData()) {
             case NO:
                 personalData = false;
@@ -111,6 +113,7 @@ public class InvenioDamapResourceMapper {
         datasetDO.setSelectedProjectMembersAccess(EAccessRight.READ);
 
         Boolean sensitiveData = true;
+        madmpDataset.setSensitiveData(Objects.requireNonNullElse(madmpDataset.getSensitiveData(), Dataset.SensitiveData.UNKNOWN));
         switch (madmpDataset.getSensitiveData()) {
             case NO:
                 sensitiveData = false;
