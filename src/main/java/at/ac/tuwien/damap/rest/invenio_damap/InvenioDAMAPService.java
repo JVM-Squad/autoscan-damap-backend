@@ -44,7 +44,7 @@ public class InvenioDAMAPService {
                     && localIdentifier.getType().toString().equalsIgnoreCase(externalIdentifier.getType().name());
         }).findFirst().orElse(new DatasetDO());
 
-        datasetDO = InvenioDamapResourceMapper.mapMaDMPDatasetToDatasetDO(dmpDO, datasetDO, dataset);
+        datasetDO = InvenioDamapResourceMapper.mapMaDMPDatasetToDatasetDO(dataset, datasetDO, dmpDO);
 
         dmpDO.getDatasets().add(datasetDO);
         dmpDO = dmpService.update(dmpDO);
