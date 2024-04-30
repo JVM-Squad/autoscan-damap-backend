@@ -1,5 +1,6 @@
 package at.ac.tuwien.damap.rest.invenio_damap;
 
+import java.text.ParseException;
 import java.util.List;
 import java.util.Objects;
 
@@ -16,6 +17,15 @@ import javax.ws.rs.core.MediaType;
 import org.eclipse.microprofile.config.inject.ConfigProperty;
 import org.jboss.resteasy.annotations.jaxrs.PathParam;
 
+import com.nimbusds.jose.JOSEException;
+import com.nimbusds.jose.JWSObject;
+import com.nimbusds.jose.JWSVerifier;
+import com.nimbusds.jose.Payload;
+import com.nimbusds.jose.crypto.MACVerifier;
+import com.nimbusds.jwt.JWTClaimsSet;
+import com.nimbusds.jwt.JWTParser;
+import com.nimbusds.jwt.SignedJWT;
+
 import at.ac.tuwien.damap.domain.Access;
 import at.ac.tuwien.damap.repo.AccessRepo;
 import at.ac.tuwien.damap.rest.dmp.domain.DmpDO;
@@ -27,7 +37,7 @@ import io.quarkus.security.ForbiddenException;
 import io.quarkus.security.UnauthorizedException;
 import lombok.extern.jbosslog.JBossLog;
 
-@Path("/api/invenio-damap/dmps")
+@Path("/api/invenio-damap")
 @Produces(MediaType.APPLICATION_JSON)
 @JBossLog
 public class InvenioDAMAPResource {
@@ -59,7 +69,30 @@ public class InvenioDAMAPResource {
      *
      */
     private boolean validateAuthHeader(HttpHeaders headers) {
-        return sharedSecret.equals(headers.getHeaderString("Authorization"));
+        // return sharedSecret.equals(headers.getHeaderString("Authorization"));
+        String authHeader = headers.getHeaderString("Authorization");
+
+        if (authHeader != null && authHeader.startsWith("Bearer ")) {
+            String token = authHeader.substring(7); // Remove "Bearer "
+
+            try {
+                SignedJWT signedJWT = SignedJWT.parse(token);
+                JWSVerifier verifier = new MACVerifier(sharedSecret);
+
+                // Verify the signature using the verifier
+                System.out.println(signedJWT.verify(verifier));
+                if (signedJWT.verify(verifier)) {
+                    // String userEmail = signedJWT.getJWTClaimsSet().getStringClaim("email");
+                    return true; // Token is valid
+                }
+                return false;
+                // return sharedSecret.equals(jwtClaims.getStringClaim("sub"));
+            } catch (ParseException | JOSEException e) {
+                return false;
+            }
+        }
+        // No Authorization header or not in the correct format
+        return false;
     }
 
     private void checkIfUserIsAuthorized(String personId, HttpHeaders headers) {
